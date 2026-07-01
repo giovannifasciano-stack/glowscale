@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>GlowScale — Asia's Weigh Diary</title>
+<style>
+  :root{
+    --pink-deep:#c94f7c;
+    --pink-mid:#f2a6c4;
+    --pink-soft:#fbe3ee;
+    --pink-line:#f7cfe0;
+    --cream:#fffaf9;
+    --ink:#4a2138;
+    --green:#4caf82;
+    --red:#e0577b;
+    --gold:#d9a441;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0;
+    font-family:'Segoe UI', system-ui, sans-serif;
+    background:linear-gradient(180deg,var(--cream) 0%, #fff 60%);
+    color:var(--ink);
+    padding-bottom:calc(60px + env(safe-area-inset-bottom));
+    padding-left:env(safe-area-inset-left);
+    padding-right:env(safe-area-inset-right);
+    -webkit-font-smoothing:antialiased;
+  }
+  header{
+    padding:calc(24px + env(safe-area-inset-top)) 20px 20px;
+    text-align:center;
+    position:relative;
+  }
+  header::after{
+    content:"";
+    display:block;
+    height:3px;
+    width:80px;
+    margin:14px auto 0;
+    background:linear-gradient(90deg,var(--pink-mid),var(--gold));
+    border-radius:3px;
+  }
+  h1{
+    font-family:'Brush Script MT', 'Segoe Script', cursive;
+    font-size:42px;
+    color:var(--pink-deep);
+    margin:0;
+    letter-spacing:1px;
+  }
+  .eyebrow-name{
+    font-size:22px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    color:var(--gold);
+    font-weight:800;
+    margin-bottom:6px;
+  }
+  .subtitle{
+    font-size:13px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--pink-mid);
+    margin-top:4px;
+  }
+  .toggles{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin:14px 0 4px;
+    flex-wrap:wrap;
+  }
+  .toggle-btn{
+    background:var(--pink-soft);
+    border:1px solid var(--pink-line);
+    color:var(--pink-deep);
+    border-radius:20px;
+    padding:9px 18px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:.2s;
+    min-height:38px;
+  }
+  .toggle-btn.active{
+    background:var(--pink-deep);
+    color:#fff;
+    border-color:var(--pink-deep);
+  }
+
+  .summary{
+    margin:20px auto 10px;
+    max-width:420px;
+    background:#fff;
+    border:1px solid var(--pink-line);
+    border-radius:18px;
+    padding:22px;
+    text-align:center;
+    box-shadow:0 6px 20px rgba(201,79,124,.08);
+  }
+  .summary .big{
+    font-size:44px;
+    font-weight:700;
+    color:var(--pink-deep);
+  }
+  .summary .big.pos{ color:var(--red); }
+  .summary .big.neg{ color:var(--green); }
+  .summary .label{
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:#a67f92;
+    margin-top:2px;
+  }
+  .summary .days{
+    margin-top:10px;
+    font-size:13px;
+    color:var(--ink);
+    background:var(--pink-soft);
+    display:inline-block;
+    padding:5px 14px;
+    border-radius:14px;
+  }
+  .chart-toggle-btn{
+    display:block;
+    margin:16px auto 0;
+    background:var(--pink-deep);
+    color:#fff;
+    border:none;
+    border-radius:20px;
+    padding:9px 20px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    min-height:38px;
+  }
+  #chartWrap{
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px dashed var(--pink-line);
+  }
+  #weightChart{
+    width:100%;
+    max-width:380px;
+    height:auto;
+  }
+
+  .entry-form{
+    max-width:420px;
+    margin:18px auto;
+    background:#fff;
+    border:1px solid var(--pink-line);
+    border-radius:18px;
+    padding:16px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+    box-shadow:0 6px 20px rgba(201,79,124,.06);
+  }
+  .entry-form input{
+    border:1px solid var(--pink-line);
+    border-radius:10px;
+    padding:12px;
+    font-size:16px;
+    color:var(--ink);
+    background:var(--pink-soft);
+    flex:1;
+    min-width:130px;
+    -webkit-appearance:none;
+  }
+  .entry-form button{
+    background:var(--pink-deep);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:12px 20px;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    min-height:44px;
+  }
+  .entry-form button:hover{ background:#b03f6b; }
+  .entry-form button#cancelBtn{
+    background:transparent;
+    color:var(--pink-deep);
+    border:1px solid var(--pink-line);
+  }
+
+  .columns{
+    max-width:900px;
+    margin:24px auto;
+    display:flex;
+    gap:20px;
+    padding:0 16px;
+  }
+  .col{
+    flex:1;
+    background:#fff;
+    border:1px solid var(--pink-line);
+    border-radius:18px;
+    padding:10px 14px;
+    max-height:60vh;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    box-shadow:0 6px 20px rgba(201,79,124,.06);
+  }
+  .col h2{
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--pink-deep);
+    text-align:center;
+    margin:4px 0 12px;
+    border-bottom:1px dashed var(--pink-line);
+    padding-bottom:8px;
+  }
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:9px 8px;
+    border-bottom:1px solid var(--pink-soft);
+    font-size:14px;
+  }
+  .row:last-child{ border-bottom:none; }
+  .row .date{ color:#8a6172; font-size:12px; }
+  .row .weight{ font-weight:700; color:var(--ink); }
+  .row .weight-delta{
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .row .delta{
+    font-size:12px;
+    font-weight:600;
+    padding:3px 9px;
+    border-radius:10px;
+  }
+  .delta.up{ background:#fbe1e8; color:var(--red); }
+  .delta.down{ background:#e3f5ec; color:var(--green); }
+  .delta.zero{ background:#f2f2f2; color:#999; }
+  .row button.del{
+    background:var(--pink-soft);
+    border:none;
+    color:var(--pink-deep);
+    cursor:pointer;
+    font-size:15px;
+    margin-left:6px;
+    min-width:34px;
+    min-height:34px;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .row button.del:active{ background:var(--pink-line); }
+  .row{ cursor:pointer; }
+
+  .row.editing{
+    background:var(--pink-soft);
+    border-radius:10px;
+  }
+  .empty{
+    text-align:center;
+    color:#c79bb0;
+    font-size:13px;
+    padding:20px;
+  }
+    text-align:center;
+    color:#c79bb0;
+    font-size:13px;
+    padding:20px;
+  }
+
+  footer{
+    text-align:center;
+    margin-top:30px;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .print-btn{
+    background:var(--gold);
+    color:#fff;
+    border:none;
+    border-radius:20px;
+    padding:12px 28px;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    min-height:44px;
+  }
+
+  @media print{
+    .toggles, .entry-form, .print-btn, .row button.del{ display:none !important; }
+    body{ background:#fff; }
+    .col{ max-height:none; overflow:visible; box-shadow:none; }
+    .columns{ flex-direction:row; }
+  }
+
+  @media (max-width:640px){
+    .columns{ flex-direction:column; padding:0 12px; }
+    h1{ font-size:30px; }
+    .summary{ margin:16px 12px; padding:18px; }
+    .summary .big{ font-size:32px; }
+    .row{ font-size:13px; padding:10px 6px; flex-wrap:wrap; }
+    .row .weight-delta{ flex-wrap:wrap; }
+    .entry-form{ margin:16px 12px; }
+    .toggles{ gap:8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow-name">Asia</div>
+  <h1>GlowScale</h1>
+  <div class="subtitle" id="subtitle">peso giorno per giorno</div>
+  <div class="toggles">
+    <button class="toggle-btn active" id="btnIta">ITA</button>
+    <button class="toggle-btn" id="btnEng">ENG</button>
+    <button class="toggle-btn active" id="btnKg">KG</button>
+    <button class="toggle-btn" id="btnLb">LB</button>
+  </div>
+</header>
+
+<div class="summary">
+  <div class="big" id="totalVar">—</div>
+  <div class="label" id="totalVarLabel">VARIAZIONE COMPLESSIVA</div>
+  <div class="days" id="daysCount">0 giorni monitorati</div>
+  <button class="chart-toggle-btn" id="chartToggleBtn">📈 Grafico</button>
+  <div id="chartWrap" style="display:none;">
+    <canvas id="weightChart" width="380" height="220"></canvas>
+  </div>
+</div>
+
+<div class="entry-form">
+  <input type="date" id="inputDate">
+  <input type="number" step="0.1" id="inputWeight" placeholder="Peso">
+  <button id="addBtn">Aggiungi</button>
+  <button id="cancelBtn" style="display:none;">Annulla</button>
+</div>
+
+<div class="columns">
+  <div class="col">
+    <h2 id="colTitle1">Storico</h2>
+    <div id="listCol1"></div>
+  </div>
+</div>
+
+<footer>
+  <button class="print-btn" id="printBtn">🖨 Stampa</button>
+</footer>
+
+<script>
+let lang = 'ita';
+let unit = 'kg';
+let entries = [];
+let editingId = null;
+
+const T = {
+  ita: {
+    subtitle: "peso giorno per giorno",
+    totalVarLabel: "VARIAZIONE COMPLESSIVA",
+    daysCount: n => n + (n===1 ? " giorno monitorato" : " giorni monitorati"),
+    colTitle1: "Storico",
+    colTitle2: "Variazioni",
+    add: "Aggiungi",
+    save: "Salva modifica",
+    cancel: "Annulla",
+    placeholder: "Peso",
+    empty: "Nessun dato ancora. Aggiungi il primo peso!",
+    print: "🖨 Stampa",
+    del: "elim."
+  },
+  eng: {
+    subtitle: "day by day weight",
+    totalVarLabel: "OVERALL CHANGE",
+    daysCount: n => n + (n===1 ? " day tracked" : " days tracked"),
+    colTitle1: "History",
+    colTitle2: "Changes",
+    add: "Add",
+    save: "Save changes",
+    cancel: "Cancel",
+    placeholder: "Weight",
+    empty: "No data yet. Add the first weight!",
+    print: "🖨 Print",
+    del: "del."
+  }
+};
+
+function loadEntries(){
+  try{
+    const raw = localStorage.getItem('asia_weight_entries');
+    entries = raw ? JSON.parse(raw) : [];
+  }catch(e){ entries = []; }
+}
+function saveEntries(){
+  localStorage.setItem('asia_weight_entries', JSON.stringify(entries));
+}
+
+function kgToLb(kg){ return kg * 2.20462; }
+function lbToKg(lb){ return lb / 2.20462; }
+
+function formatWeight(kgValue){
+  const val = unit === 'kg' ? kgValue : kgToLb(kgValue);
+  return val.toFixed(1) + ' ' + (unit === 'kg' ? 'kg' : 'lb');
+}
+function formatDelta(deltaKg){
+  const val = unit === 'kg' ? deltaKg : kgToLb(deltaKg);
+  const sign = val > 0 ? '+' : '';
+  return sign + val.toFixed(1) + ' ' + (unit === 'kg' ? 'kg' : 'lb');
+}
+
+function render(){
+  const t = T[lang];
+  document.getElementById('subtitle').textContent = t.subtitle;
+  document.getElementById('totalVarLabel').textContent = t.totalVarLabel;
+  document.getElementById('colTitle1').textContent = t.colTitle1;
+  document.getElementById('addBtn').textContent = editingId ? t.save : t.add;
+  document.getElementById('cancelBtn').textContent = t.cancel;
+  document.getElementById('inputWeight').placeholder = t.placeholder;
+  document.getElementById('printBtn').textContent = t.print;
+
+  const sorted = [...entries].sort((a,b)=> new Date(a.date) - new Date(b.date));
+  const list1 = document.getElementById('listCol1');
+  list1.innerHTML = '';
+
+  if(sorted.length === 0){
+    list1.innerHTML = `<div class="empty">${t.empty}</div>`;
+  } else {
+    sorted.forEach((entry, idx) => {
+      const prev = idx > 0 ? sorted[idx-1].weightKg : null;
+      const delta = prev !== null ? entry.weightKg - prev : null;
+
+      let deltaHtml;
+      if(delta === null){
+        deltaHtml = `<span class="delta zero">—</span>`;
+      } else if(delta > 0){
+        deltaHtml = `<span class="delta up">${formatDelta(delta)}</span>`;
+      } else if(delta < 0){
+        deltaHtml = `<span class="delta down">${formatDelta(delta)}</span>`;
+      } else {
+        deltaHtml = `<span class="delta zero">${formatDelta(delta)}</span>`;
+      }
+
+      const row = document.createElement('div');
+      row.className = 'row' + (editingId === entry.id ? ' editing' : '');
+      row.dataset.id = entry.id;
+      row.innerHTML = `
+        <span class="date">${entry.date}</span>
+        <span class="weight-delta">
+          <span class="weight">${formatWeight(entry.weightKg)}</span>
+          ${deltaHtml}
+        </span>
+        <button class="del" data-id="${entry.id}">🗑</button>
+      `;
+      list1.appendChild(row);
+    });
+  }
+
+  // Overall variation
+  const totalVarEl = document.getElementById('totalVar');
+  const daysCountEl = document.getElementById('daysCount');
+  if(sorted.length >= 2){
+    const first = sorted[0].weightKg;
+    const last = sorted[sorted.length-1].weightKg;
+    const totalDelta = last - first;
+    totalVarEl.textContent = formatDelta(totalDelta);
+    totalVarEl.className = 'big ' + (totalDelta > 0 ? 'pos' : totalDelta < 0 ? 'neg' : '');
+  } else {
+    totalVarEl.textContent = '—';
+    totalVarEl.className = 'big';
+  }
+  daysCountEl.textContent = t.daysCount(sorted.length);
+
+  const chartWrap = document.getElementById('chartWrap');
+  if(chartWrap.style.display !== 'none' && typeof drawChart === 'function'){
+    drawChart(sorted);
+  }
+
+  // delete buttons
+  document.querySelectorAll('.del').forEach(btn=>{
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      entries = entries.filter(en => en.id !== btn.dataset.id);
+      if(editingId === btn.dataset.id){
+        editingId = null;
+        document.getElementById('inputWeight').value = '';
+        document.getElementById('cancelBtn').style.display = 'none';
+      }
+      saveEntries();
+      render();
+    };
+  });
+
+  // tap a row to edit it (loads into form, enters edit mode)
+  document.querySelectorAll('.row[data-id]').forEach(rowEl=>{
+    rowEl.onclick = () => {
+      const entry = entries.find(en => en.id === rowEl.dataset.id);
+      if(!entry) return;
+      editingId = entry.id;
+      document.getElementById('inputDate').value = entry.date;
+      const displayVal = unit === 'kg' ? entry.weightKg : kgToLb(entry.weightKg);
+      document.getElementById('inputWeight').value = displayVal.toFixed(1);
+      document.getElementById('cancelBtn').style.display = 'inline-block';
+      document.getElementById('addBtn').textContent = T[lang].save;
+      document.getElementById('inputWeight').focus();
+      window.scrollTo({top:0, behavior:'smooth'});
+    };
+  });
+}
+
+function drawChart(sorted){
+  const canvas = document.getElementById('weightChart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  if(sorted.length < 2){
+    ctx.fillStyle = '#c79bb0';
+    ctx.font = '13px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(lang === 'ita' ? 'Servono almeno 2 pesi' : 'Need at least 2 entries', W/2, H/2);
+    return;
+  }
+
+  const pad = 30;
+  const values = sorted.map(e => unit === 'kg' ? e.weightKg : kgToLb(e.weightKg));
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = (max - min) || 1;
+
+  const xStep = (W - pad*2) / (values.length - 1);
+
+  // grid line (mid)
+  ctx.strokeStyle = '#f2dbe6';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad, H/2);
+  ctx.lineTo(W-pad, H/2);
+  ctx.stroke();
+
+  // line path
+  ctx.strokeStyle = '#c94f7c';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  values.forEach((v, i) => {
+    const x = pad + i * xStep;
+    const y = H - pad - ((v - min) / range) * (H - pad*2);
+    if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // points
+  values.forEach((v, i) => {
+    const x = pad + i * xStep;
+    const y = H - pad - ((v - min) / range) * (H - pad*2);
+    ctx.fillStyle = '#c94f7c';
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  // min/max labels
+  ctx.fillStyle = '#8a6172';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'left';
+  ctx.fillText(max.toFixed(1), pad, pad - 8);
+  ctx.fillText(min.toFixed(1), pad, H - pad + 16);
+}
+
+document.getElementById('chartToggleBtn').addEventListener('click', () => {
+  const wrap = document.getElementById('chartWrap');
+  const showing = wrap.style.display !== 'none';
+  wrap.style.display = showing ? 'none' : 'block';
+  if(!showing){
+    const sorted = [...entries].sort((a,b)=> new Date(a.date) - new Date(b.date));
+    drawChart(sorted);
+  }
+});
+  const dateVal = document.getElementById('inputDate').value;
+  const weightVal = parseFloat(document.getElementById('inputWeight').value);
+  if(!dateVal || isNaN(weightVal)) return;
+
+  const weightKg = unit === 'kg' ? weightVal : lbToKg(weightVal);
+
+  if(editingId){
+    // update the entry being edited, regardless of whether the date changed
+    const idx = entries.findIndex(e => e.id === editingId);
+    if(idx >= 0){
+      entries[idx].date = dateVal;
+      entries[idx].weightKg = weightKg;
+    }
+    editingId = null;
+  } else {
+    // new entry: if a row with same date already exists, update it instead of duplicating
+    const existingIdx = entries.findIndex(e => e.date === dateVal);
+    if(existingIdx >= 0){
+      entries[existingIdx].weightKg = weightKg;
+    } else {
+      entries.push({
+        id: Date.now().toString(),
+        date: dateVal,
+        weightKg: weightKg
+      });
+    }
+  }
+  saveEntries();
+  document.getElementById('inputWeight').value = '';
+  document.getElementById('cancelBtn').style.display = 'none';
+  document.getElementById('inputDate').valueAsDate = new Date();
+  render();
+});
+
+document.getElementById('cancelBtn').addEventListener('click', () => {
+  editingId = null;
+  document.getElementById('inputWeight').value = '';
+  document.getElementById('inputDate').valueAsDate = new Date();
+  document.getElementById('cancelBtn').style.display = 'none';
+  render();
+});
+
+document.getElementById('btnIta').addEventListener('click', () => setLang('ita'));
+document.getElementById('btnEng').addEventListener('click', () => setLang('eng'));
+document.getElementById('btnKg').addEventListener('click', () => setUnit('kg'));
+document.getElementById('btnLb').addEventListener('click', () => setUnit('lb'));
+
+function setLang(l){
+  lang = l;
+  document.getElementById('btnIta').classList.toggle('active', l === 'ita');
+  document.getElementById('btnEng').classList.toggle('active', l === 'eng');
+  render();
+}
+function setUnit(u){
+  unit = u;
+  document.getElementById('btnKg').classList.toggle('active', u === 'kg');
+  document.getElementById('btnLb').classList.toggle('active', u === 'lb');
+  render();
+}
+
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+// default date = today
+document.getElementById('inputDate').valueAsDate = new Date();
+
+loadEntries();
+render();
+</script>
+</body>
+</html>
