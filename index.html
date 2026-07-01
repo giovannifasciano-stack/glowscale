@@ -57,6 +57,12 @@
     font-weight:800;
     margin-bottom:6px;
   }
+  .sync-status{
+    font-size:11px;
+    color:#b98aa0;
+    margin-top:6px;
+    min-height:14px;
+  }
   .subtitle{
     font-size:13px;
     letter-spacing:2px;
@@ -316,6 +322,7 @@
   <div class="eyebrow-name">Asia</div>
   <h1>GlowScale</h1>
   <div class="subtitle" id="subtitle">peso giorno per giorno</div>
+  <div class="sync-status" id="syncStatus"></div>
   <div class="toggles">
     <button class="toggle-btn active" id="btnIta">ITA</button>
     <button class="toggle-btn" id="btnEng">ENG</button>
@@ -389,14 +396,76 @@ const T = {
   }
 };
 
-function loadEntries(){
-  try{
-    const raw = localStorage.getItem('asia_weight_entries');
-    entries = raw ? JSON.parse(raw) : [];
-  }catch(e){ entries = []; }
+// --- Shared data store via GitHub Contents API ---
+const GH_OWNER = 'giovannifasciano-stack';
+const GH_REPO = 'glowscale';
+const GH_PATH = 'data.json';
+const GH_TOKEN = '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';
+const GH_API = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
+let currentSha = null;
+
+function setSyncStatus(text){
+  const el = document.getElementById('syncStatus');
+  if(el) el.textContent = text;
 }
-function saveEntries(){
-  localStorage.setItem('asia_weight_entries', JSON.stringify(entries));
+
+async function loadEntries(){
+  setSyncStatus(lang === 'ita' ? 'Sincronizzo…' : 'Syncing…');
+  try{
+    const res = await fetch(GH_API, {
+      headers: {
+        'Authorization': 'token ' + GH_TOKEN,
+        'Accept': 'application/vnd.github+json'
+      }
+    });
+    if(!res.ok) throw new Error('fetch failed ' + res.status);
+    const json = await res.json();
+    currentSha = json.sha;
+    const decoded = decodeURIComponent(escape(atob(json.content.replace(/\n/g,''))));
+    entries = JSON.parse(decoded || '[]');
+    localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
+    setSyncStatus(lang === 'ita' ? 'Aggiornato ✓' : 'Up to date ✓');
+  }catch(e){
+    console.error('Load error', e);
+    const cached = localStorage.getItem('asia_weight_entries_cache');
+    entries = cached ? JSON.parse(cached) : [];
+    setSyncStatus(lang === 'ita' ? 'Offline — dati locali' : 'Offline — local data');
+  }
+}
+
+async function saveEntries(){
+  localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
+  setSyncStatus(lang === 'ita' ? 'Salvo…' : 'Saving…');
+  try{
+    const content = btoa(unescape(encodeURIComponent(JSON.stringify(entries, null, 2))));
+    const body = {
+      message: 'Update weight data',
+      content: content,
+      branch: 'main'
+    };
+    if(currentSha) body.sha = currentSha;
+    const res = await fetch(GH_API, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'token ' + GH_TOKEN,
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if(res.status === 409){
+      // sha out of date: someone else wrote in the meantime, re-fetch and retry once
+      await loadEntries();
+      return saveEntries();
+    }
+    if(!res.ok) throw new Error('save failed ' + res.status);
+    const json = await res.json();
+    currentSha = json.content.sha;
+    setSyncStatus(lang === 'ita' ? 'Salvato ✓' : 'Saved ✓');
+  }catch(e){
+    console.error('Save error', e);
+    setSyncStatus(lang === 'ita' ? 'Errore rete — salvato solo su questo telefono' : 'Network error — saved on this phone only');
+  }
 }
 
 function kgToLb(kg){ return kg * 2.20462; }
@@ -644,8 +713,18 @@ document.getElementById('printBtn').addEventListener('click', () => window.print
 // default date = today
 document.getElementById('inputDate').valueAsDate = new Date();
 
-loadEntries();
-render();
+(async () => {
+  await loadEntries();
+  render();
+})();
+
+// refresh from the shared store every 20s so everyone sees updates without reloading
+setInterval(async () => {
+  if(editingId) return; // don't yank data out from under an active edit
+  await loadEntries();
+  render();
+}, 20000);
+
 </script>
 </body>
 </html>
