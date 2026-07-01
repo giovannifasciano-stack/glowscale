@@ -619,6 +619,8 @@ document.getElementById('chartToggleBtn').addEventListener('click', () => {
     drawChart(sorted);
   }
 });
+
+document.getElementById('addBtn').addEventListener('click', () => {
   const dateVal = document.getElementById('inputDate').value;
   const weightVal = parseFloat(document.getElementById('inputWeight').value);
   if(!dateVal || isNaN(weightVal)) return;
