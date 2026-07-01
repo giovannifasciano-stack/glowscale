@@ -396,8 +396,10 @@ const T = {
   }
 };
 
-// --- Shared data store via npoint.io (no secret embedded) ---
-const NPOINT_API = 'https://api.npoint.io/2d72f5aebbce1ee948f4';
+// --- Shared data store via JSONBin.io ---
+const JSONBIN_ID = '6a44bc97da38895dfe1a20f9';
+const JSONBIN_KEY = '$2a$10$VNTj6CT9PBlMxuJPipL3tutUeRZJQGMAkjbIqOyxSGPpiBF7U7p.K';
+const JSONBIN_API = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 
 function setSyncStatus(text){
   const el = document.getElementById('syncStatus');
@@ -407,10 +409,17 @@ function setSyncStatus(text){
 async function loadEntries(){
   setSyncStatus(lang === 'ita' ? 'Sincronizzo…' : 'Syncing…');
   try{
-    const res = await fetch(NPOINT_API, { cache: 'no-store' });
+    const res = await fetch(JSONBIN_API + '/latest', {
+      headers: {
+        'X-Master-Key': JSONBIN_KEY,
+        'X-Bin-Meta': 'false'
+      },
+      cache: 'no-store'
+    });
     if(!res.ok) throw new Error('fetch failed ' + res.status);
     const json = await res.json();
-    entries = Array.isArray(json) ? json : [];
+    // filter out placeholder/invalid rows, keep only real weight entries
+    entries = (Array.isArray(json) ? json : []).filter(e => e && e.date && typeof e.weightKg === 'number');
     localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
     setSyncStatus(lang === 'ita' ? 'Aggiornato ✓' : 'Up to date ✓');
   }catch(e){
@@ -425,9 +434,12 @@ async function saveEntries(){
   localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
   setSyncStatus(lang === 'ita' ? 'Salvo…' : 'Saving…');
   try{
-    const res = await fetch(NPOINT_API, {
+    const res = await fetch(JSONBIN_API, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': JSONBIN_KEY
+      },
       body: JSON.stringify(entries)
     });
     if(!res.ok) throw new Error('save failed ' + res.status);
