@@ -710,7 +710,11 @@ document.getElementById('addBtn').addEventListener('click', () => {
     // new entry: if a row with same date already exists, update it instead of duplicating
     const existingIdx = entries.findIndex(e => e.date === dateVal);
     if(existingIdx >= 0){
-      entries[existingIdx].weightKg = weightKg;
+      // only overwrite the existing weight if the user actually typed one;
+      // leaving it blank must not erase a weight already saved for that day
+      if(weightKg !== null){
+        entries[existingIdx].weightKg = weightKg;
+      }
     } else {
       entries.push({
         id: Date.now().toString(),
