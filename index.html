@@ -442,17 +442,17 @@ async function loadEntries(){
       },
       cache: 'no-store'
     });
-    if(!res.ok) throw new Error('fetch failed ' + res.status);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
-    // filter out placeholder/invalid rows, keep only real weight entries
-    entries = (Array.isArray(json) ? json : []).filter(e => e && e.date && typeof e.weightKg === 'number');
+    // keep any row with a valid date; weightKg may legitimately be null (shot-only day)
+    entries = (Array.isArray(json) ? json : []).filter(e => e && e.date);
     localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
     setSyncStatus(lang === 'ita' ? 'Aggiornato ✓' : 'Up to date ✓');
   }catch(e){
     console.error('Load error', e);
     const cached = localStorage.getItem('asia_weight_entries_cache');
     entries = cached ? JSON.parse(cached) : [];
-    setSyncStatus(lang === 'ita' ? 'Offline — dati locali' : 'Offline — local data');
+    setSyncStatus((lang === 'ita' ? 'Offline — dati locali (' : 'Offline — local data (') + e.message + ')');
   }
 }
 
@@ -468,11 +468,11 @@ async function saveEntries(){
       },
       body: JSON.stringify(entries)
     });
-    if(!res.ok) throw new Error('save failed ' + res.status);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
     setSyncStatus(lang === 'ita' ? 'Salvato ✓' : 'Saved ✓');
   }catch(e){
     console.error('Save error', e);
-    setSyncStatus(lang === 'ita' ? 'Errore rete — salvato solo su questo telefono' : 'Network error — saved on this phone only');
+    setSyncStatus((lang === 'ita' ? 'Errore rete (' : 'Network error (') + e.message + (lang === 'ita' ? ') — solo su questo telefono' : ') — this phone only'));
   }
 }
 
