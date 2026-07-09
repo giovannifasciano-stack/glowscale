@@ -261,6 +261,26 @@
     align-items:center;
     justify-content:center;
   }
+  .row button.shot-btn{
+    background:#f2f2f2;
+    border:none;
+    cursor:pointer;
+    font-size:15px;
+    min-width:34px;
+    min-height:34px;
+    border-radius:8px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:.35;
+    filter:grayscale(1);
+    transition:.2s;
+  }
+  .row button.shot-btn.active{
+    background:var(--pink-soft);
+    opacity:1;
+    filter:none;
+  }
   .row button.del:active{ background:var(--pink-line); }
   .row{ cursor:pointer; }
 
@@ -505,6 +525,7 @@ function render(){
           <span class="weight">${formatWeight(entry.weightKg)}</span>
           ${deltaHtml}
         </span>
+        <button class="shot-btn${entry.shot ? ' active' : ''}" data-id="${entry.id}" title="Mounjaro">💉</button>
         <button class="del" data-id="${entry.id}">🗑</button>
       `;
       list1.appendChild(row);
@@ -541,6 +562,18 @@ function render(){
         document.getElementById('inputWeight').value = '';
         document.getElementById('cancelBtn').style.display = 'none';
       }
+      saveEntries();
+      render();
+    };
+  });
+
+  // syringe toggle (Mounjaro shot day)
+  document.querySelectorAll('.shot-btn').forEach(btn=>{
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const entry = entries.find(en => en.id === btn.dataset.id);
+      if(!entry) return;
+      entry.shot = !entry.shot;
       saveEntries();
       render();
     };
