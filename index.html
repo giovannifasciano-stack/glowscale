@@ -352,25 +352,24 @@
       page-break-inside:auto;
     }
     .row{
-      display:block !important;
+      display:flex !important;
       padding:6px 4px;
       border-bottom:1px solid #eee;
       page-break-inside:avoid;
       font-size:12px;
     }
     .row .date{
-      display:block;
-      font-weight:700;
+      order:1;
+      width:80px;
+      flex-shrink:0;
       color:#000 !important;
-      font-size:12px;
-      margin-bottom:2px;
     }
-    .row .weight-delta{ display:flex; gap:8px; }
-    .delta.up{ background:#fbe1e8 !important; color:#c0355c !important; }
-    .delta.down{ background:#e3f5ec !important; color:#2f8f61 !important; }
-    .row button.shot-btn{ display:none !important; }
+    .row button.shot-btn{
+      order:2;
+      display:none !important;
+    }
     .row button.shot-btn.active{
-      display:inline !important;
+      display:inline-flex !important;
       -webkit-appearance:none;
       background:none !important;
       border:none;
@@ -379,9 +378,12 @@
       min-width:0;
       min-height:0;
       padding:0;
-      font-size:0;
+      margin-right:6px;
+      font-size:13px;
     }
-    .row button.shot-btn.active::after{ content:"💉 Mounjaro"; font-size:11px; color:#c94f7c; }
+    .row .weight-delta{ order:3; display:flex; gap:8px; margin-left:auto; }
+    .delta.up{ background:#fbe1e8 !important; color:#c0355c !important; }
+    .delta.down{ background:#e3f5ec !important; color:#2f8f61 !important; }
     footer{ display:none; }
   }
 
