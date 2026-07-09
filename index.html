@@ -238,6 +238,12 @@
     align-items:center;
     gap:8px;
   }
+  .weight.no-weight{
+    font-weight:400;
+    font-style:italic;
+    color:#c79bb0;
+    font-size:12px;
+  }
   .row .delta{
     font-size:12px;
     font-weight:600;
@@ -395,7 +401,7 @@ const T = {
     add: "Aggiungi",
     save: "Salva modifica",
     cancel: "Annulla",
-    placeholder: "Peso",
+    placeholder: "Peso (opzionale)",
     empty: "Nessun dato ancora. Aggiungi il primo peso!",
     print: "🖨 Stampa",
     del: "elim."
@@ -409,7 +415,7 @@ const T = {
     add: "Add",
     save: "Save changes",
     cancel: "Cancel",
-    placeholder: "Weight",
+    placeholder: "Weight (optional)",
     empty: "No data yet. Add the first weight!",
     print: "🖨 Print",
     del: "del."
@@ -502,11 +508,18 @@ function render(){
     list1.innerHTML = `<div class="empty">${t.empty}</div>`;
   } else {
     sorted.forEach((entry, idx) => {
-      const prev = idx > 0 ? sorted[idx-1].weightKg : null;
-      const delta = prev !== null ? entry.weightKg - prev : null;
+      // find nearest previous entry that actually has a weight value
+      let prev = null;
+      for(let j = idx - 1; j >= 0; j--){
+        if(typeof sorted[j].weightKg === 'number'){ prev = sorted[j].weightKg; break; }
+      }
+      const hasWeight = typeof entry.weightKg === 'number';
+      const delta = (hasWeight && prev !== null) ? entry.weightKg - prev : null;
 
       let deltaHtml;
-      if(delta === null){
+      if(!hasWeight){
+        deltaHtml = '';
+      } else if(delta === null){
         deltaHtml = `<span class="delta zero">—</span>`;
       } else if(delta > 0){
         deltaHtml = `<span class="delta up">${formatDelta(delta)}</span>`;
@@ -516,13 +529,17 @@ function render(){
         deltaHtml = `<span class="delta zero">${formatDelta(delta)}</span>`;
       }
 
+      const weightHtml = hasWeight
+        ? `<span class="weight">${formatWeight(entry.weightKg)}</span>`
+        : `<span class="weight no-weight">${lang === 'ita' ? 'nessun peso' : 'no weight'}</span>`;
+
       const row = document.createElement('div');
       row.className = 'row' + (editingId === entry.id ? ' editing' : '');
       row.dataset.id = entry.id;
       row.innerHTML = `
         <span class="date">${entry.date}</span>
         <span class="weight-delta">
-          <span class="weight">${formatWeight(entry.weightKg)}</span>
+          ${weightHtml}
           ${deltaHtml}
         </span>
         <button class="shot-btn${entry.shot ? ' active' : ''}" data-id="${entry.id}" title="Mounjaro">💉</button>
@@ -532,12 +549,13 @@ function render(){
     });
   }
 
-  // Overall variation
+  // Overall variation (only rows that actually have a weight)
   const totalVarEl = document.getElementById('totalVar');
   const daysCountEl = document.getElementById('daysCount');
-  if(sorted.length >= 2){
-    const first = sorted[0].weightKg;
-    const last = sorted[sorted.length-1].weightKg;
+  const weighedRows = sorted.filter(e => typeof e.weightKg === 'number');
+  if(weighedRows.length >= 2){
+    const first = weighedRows[0].weightKg;
+    const last = weighedRows[weighedRows.length-1].weightKg;
     const totalDelta = last - first;
     totalVarEl.textContent = formatDelta(totalDelta);
     totalVarEl.className = 'big ' + (totalDelta > 0 ? 'pos' : totalDelta < 0 ? 'neg' : '');
@@ -586,8 +604,12 @@ function render(){
       if(!entry) return;
       editingId = entry.id;
       document.getElementById('inputDate').value = entry.date;
-      const displayVal = unit === 'kg' ? entry.weightKg : kgToLb(entry.weightKg);
-      document.getElementById('inputWeight').value = displayVal.toFixed(1);
+      if(typeof entry.weightKg === 'number'){
+        const displayVal = unit === 'kg' ? entry.weightKg : kgToLb(entry.weightKg);
+        document.getElementById('inputWeight').value = displayVal.toFixed(1);
+      } else {
+        document.getElementById('inputWeight').value = '';
+      }
       document.getElementById('cancelBtn').style.display = 'inline-block';
       document.getElementById('addBtn').textContent = T[lang].save;
       document.getElementById('inputWeight').focus();
@@ -602,7 +624,9 @@ function drawChart(sorted){
   const W = canvas.width, H = canvas.height;
   ctx.clearRect(0,0,W,H);
 
-  if(sorted.length < 2){
+  const weighed = sorted.filter(e => typeof e.weightKg === 'number');
+
+  if(weighed.length < 2){
     ctx.fillStyle = '#c79bb0';
     ctx.font = '13px system-ui';
     ctx.textAlign = 'center';
@@ -610,6 +634,7 @@ function drawChart(sorted){
     return;
   }
 
+  sorted = weighed;
   const pad = 30;
   const values = sorted.map(e => unit === 'kg' ? e.weightKg : kgToLb(e.weightKg));
   const min = Math.min(...values);
@@ -667,10 +692,11 @@ document.getElementById('chartToggleBtn').addEventListener('click', () => {
 
 document.getElementById('addBtn').addEventListener('click', () => {
   const dateVal = document.getElementById('inputDate').value;
-  const weightVal = parseFloat(document.getElementById('inputWeight').value);
-  if(!dateVal || isNaN(weightVal)) return;
+  const rawWeight = document.getElementById('inputWeight').value;
+  if(!dateVal) return;
 
-  const weightKg = unit === 'kg' ? weightVal : lbToKg(weightVal);
+  const weightVal = rawWeight === '' ? null : parseFloat(rawWeight);
+  const weightKg = weightVal === null || isNaN(weightVal) ? null : (unit === 'kg' ? weightVal : lbToKg(weightVal));
 
   if(editingId){
     // update the entry being edited, regardless of whether the date changed
