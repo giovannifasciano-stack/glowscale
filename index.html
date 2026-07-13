@@ -426,7 +426,7 @@
 
 <div class="entry-form">
   <input type="date" id="inputDate">
-  <input type="number" step="0.1" id="inputWeight" placeholder="Peso">
+  <input type="number" step="0.01" id="inputWeight" placeholder="Peso">
   <button id="addBtn">Aggiungi</button>
   <button id="cancelBtn" style="display:none;">Annulla</button>
 </div>
@@ -539,12 +539,12 @@ function lbToKg(lb){ return lb / 2.20462; }
 
 function formatWeight(kgValue){
   const val = unit === 'kg' ? kgValue : kgToLb(kgValue);
-  return val.toFixed(1) + ' ' + (unit === 'kg' ? 'kg' : 'lb');
+  return val.toFixed(2) + ' ' + (unit === 'kg' ? 'kg' : 'lb');
 }
 function formatDelta(deltaKg){
   const val = unit === 'kg' ? deltaKg : kgToLb(deltaKg);
   const sign = val > 0 ? '+' : '';
-  return sign + val.toFixed(1) + ' ' + (unit === 'kg' ? 'kg' : 'lb');
+  return sign + val.toFixed(2) + ' ' + (unit === 'kg' ? 'kg' : 'lb');
 }
 
 function render(){
@@ -663,7 +663,7 @@ function render(){
       document.getElementById('inputDate').value = entry.date;
       if(typeof entry.weightKg === 'number'){
         const displayVal = unit === 'kg' ? entry.weightKg : kgToLb(entry.weightKg);
-        document.getElementById('inputWeight').value = displayVal.toFixed(1);
+        document.getElementById('inputWeight').value = displayVal.toFixed(2);
       } else {
         document.getElementById('inputWeight').value = '';
       }
@@ -733,8 +733,8 @@ function drawChart(sorted){
   ctx.fillStyle = '#8a6172';
   ctx.font = '11px system-ui';
   ctx.textAlign = 'left';
-  ctx.fillText(max.toFixed(1), pad, pad - 8);
-  ctx.fillText(min.toFixed(1), pad, H - pad + 16);
+  ctx.fillText(max.toFixed(2), pad, pad - 8);
+  ctx.fillText(min.toFixed(2), pad, H - pad + 16);
 }
 
 document.getElementById('chartToggleBtn').addEventListener('click', () => {
