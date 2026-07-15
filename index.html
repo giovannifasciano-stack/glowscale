@@ -675,6 +675,12 @@ function render(){
       e.stopPropagation();
       const entry = entries.find(en => en.id === btn.dataset.id);
       if(!entry) return;
+      if(entry.shot){
+        const msg = lang === 'ita'
+          ? `Togliere il flag Mounjaro dal ${entry.date}?`
+          : `Remove the Mounjaro flag from ${entry.date}?`;
+        if(!confirm(msg)) return;
+      }
       entry.shot = !entry.shot;
       saveEntries();
       render();
