@@ -229,18 +229,20 @@
     padding-bottom:8px;
   }
   .row{
-    display:flex;
-    justify-content:space-between;
+    display:grid;
+    grid-template-columns: 84px 1fr 40px 40px;
     align-items:center;
+    gap:6px;
     padding:9px 8px;
     border-bottom:1px solid var(--pink-soft);
     font-size:14px;
   }
   .row:last-child{ border-bottom:none; }
   .row .date{ color:#8a6172; font-size:12px; }
-  .row .weight{ font-weight:700; color:var(--ink); }
+  .row .weight{ font-weight:700; color:var(--ink); text-align:right; }
   .row .weight-delta{
-    display:flex;
+    display:grid;
+    grid-template-columns: 72px 78px;
     align-items:center;
     gap:8px;
   }
@@ -249,12 +251,15 @@
     font-style:italic;
     color:#c79bb0;
     font-size:12px;
+    text-align:right;
   }
   .row .delta{
     font-size:12px;
     font-weight:600;
     padding:3px 9px;
     border-radius:10px;
+    justify-self:center;
+    text-align:center;
   }
   .delta.up{ background:#fbe1e8; color:var(--red); }
   .delta.down{ background:#e3f5ec; color:var(--green); }
@@ -265,13 +270,13 @@
     color:var(--pink-deep);
     cursor:pointer;
     font-size:15px;
-    margin-left:6px;
     min-width:34px;
     min-height:34px;
     border-radius:8px;
     display:flex;
     align-items:center;
     justify-content:center;
+    justify-self:center;
   }
   .row button.shot-btn{
     background:#f2f2f2;
@@ -284,6 +289,7 @@
     display:flex;
     align-items:center;
     justify-content:center;
+    justify-self:center;
     opacity:.35;
     filter:grayscale(1);
     transition:.2s;
@@ -398,8 +404,9 @@
     h1{ font-size:30px; }
     .summary{ margin:16px 12px; padding:18px; }
     .summary .big{ font-size:32px; }
-    .row{ font-size:13px; padding:10px 6px; flex-wrap:wrap; }
-    .row .weight-delta{ flex-wrap:wrap; }
+    .row{ font-size:13px; padding:10px 6px; grid-template-columns: 72px 1fr 36px 36px; gap:4px; }
+    .row .weight-delta{ grid-template-columns: 62px 68px; gap:4px; }
+    .row .delta{ font-size:11px; padding:3px 6px; }
     .entry-form{ margin:16px 12px; }
     .toggles{ gap:8px; }
   }
