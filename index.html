@@ -658,6 +658,11 @@ function render(){
   document.querySelectorAll('.del').forEach(btn=>{
     btn.onclick = (e) => {
       e.stopPropagation();
+      const entry = entries.find(en => en.id === btn.dataset.id);
+      const msg = entry
+        ? (lang === 'ita' ? `Eliminare definitivamente la riga del ${entry.date}?` : `Permanently delete the row for ${entry.date}?`)
+        : (lang === 'ita' ? 'Eliminare questa riga?' : 'Delete this row?');
+      if(!confirm(msg)) return;
       entries = entries.filter(en => en.id !== btn.dataset.id);
       if(editingId === btn.dataset.id){
         editingId = null;
