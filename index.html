@@ -432,6 +432,7 @@
   <div class="label" id="totalVarLabel">VARIAZIONE COMPLESSIVA</div>
   <div class="days" id="daysCount">0 giorni monitorati</div>
   <div class="days-since-start" id="daysSinceStart"></div>
+  <div class="days" id="shotCount">💉 0</div>
   <button class="chart-toggle-btn" id="chartToggleBtn">📈 Grafico</button>
   <div id="chartWrap" style="display:none;">
     <canvas id="weightChart" width="380" height="220"></canvas>
@@ -468,6 +469,7 @@ const T = {
     totalVarLabel: "VARIAZIONE COMPLESSIVA",
     daysCount: n => n + (n===1 ? " giorno monitorato" : " giorni monitorati"),
     sinceStart: n => `${n}° giorno da inizio cura/dieta`,
+    shotCount: n => `💉 ${n} ${n===1 ? 'iniezione fatta' : 'iniezioni fatte'}`,
     colTitle1: "Storico",
     colTitle2: "Variazioni",
     add: "Aggiungi",
@@ -483,6 +485,7 @@ const T = {
     totalVarLabel: "OVERALL CHANGE",
     daysCount: n => n + (n===1 ? " day tracked" : " days tracked"),
     sinceStart: n => `Day ${n} since start`,
+    shotCount: n => `💉 ${n} ${n===1 ? 'shot' : 'shots'} done`,
     colTitle1: "History",
     colTitle2: "Changes",
     add: "Add",
@@ -648,6 +651,10 @@ function render(){
   } else {
     sinceStartEl.textContent = '';
   }
+
+  const shotCountEl = document.getElementById('shotCount');
+  const totalShots = sorted.filter(e => e.shot).length;
+  shotCountEl.textContent = t.shotCount(totalShots);
 
   const chartWrap = document.getElementById('chartWrap');
   if(chartWrap.style.display !== 'none' && typeof drawChart === 'function'){
