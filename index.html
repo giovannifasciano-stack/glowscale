@@ -508,6 +508,8 @@ function setSyncStatus(text){
   if(el) el.textContent = text;
 }
 
+let remoteSyncOk = false; // becomes true only after a successful load from the server this session
+
 async function loadEntries(){
   setSyncStatus(lang === 'ita' ? 'Sincronizzo…' : 'Syncing…');
   try{
@@ -523,16 +525,29 @@ async function loadEntries(){
     // keep any row with a valid date; weightKg may legitimately be null (shot-only day)
     entries = (Array.isArray(json) ? json : []).filter(e => e && e.date);
     localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
+    remoteSyncOk = true;
     setSyncStatus(lang === 'ita' ? 'Aggiornato ✓' : 'Up to date ✓');
   }catch(e){
     console.error('Load error', e);
+    remoteSyncOk = false;
     const cached = localStorage.getItem('asia_weight_entries_cache');
     entries = cached ? JSON.parse(cached) : [];
-    setSyncStatus((lang === 'ita' ? 'Offline — dati locali (' : 'Offline — local data (') + e.message + ')');
+    setSyncStatus((lang === 'ita' ? '⚠️ Offline — NON aggiungere dati ora (' : '⚠️ Offline — do NOT add data now (') + e.message + ')');
   }
 }
 
 async function saveEntries(){
+  // Safety net: never let a failed/empty sync silently overwrite real server data.
+  // If we haven't confirmed a successful load from the server this session, block the write.
+  if(!remoteSyncOk){
+    const msg = lang === 'ita'
+      ? 'Non sono ancora riuscito a leggere i dati dal server in modo sicuro. Salvare ora rischia di CANCELLARE dati esistenti. Vuoi salvare comunque?'
+      : 'I could not safely confirm the server data yet. Saving now risks OVERWRITING existing data. Save anyway?';
+    if(!confirm(msg)){
+      setSyncStatus(lang === 'ita' ? '⚠️ Salvataggio annullato per sicurezza' : '⚠️ Save cancelled for safety');
+      return;
+    }
+  }
   localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
   setSyncStatus(lang === 'ita' ? 'Salvo…' : 'Saving…');
   try{
