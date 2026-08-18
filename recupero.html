@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recupero Dati GlowScale</title>
+<style>
+  body{ font-family:system-ui, sans-serif; background:#fff8f8; padding:20px; color:#4a2138; }
+  h1{ color:#c94f7c; font-size:20px; }
+  button{ background:#c94f7c; color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:14px; margin:4px 4px 4px 0; cursor:pointer; }
+  button:disabled{ opacity:.4; }
+  .version{ border:1px solid #f2dbe6; border-radius:10px; padding:12px; margin:10px 0; background:#fff; }
+  .version h3{ margin:0 0 6px; font-size:14px; color:#c94f7c; }
+  pre{ background:#fbe3ee; padding:8px; border-radius:6px; font-size:11px; overflow-x:auto; max-height:150px; }
+  .status{ font-size:13px; color:#8a6172; margin:10px 0; }
+  .restore-btn{ background:#4caf82; }
+</style>
+</head>
+<body>
+
+<h1>🔧 Recupero Dati GlowScale</h1>
+<div class="status" id="status">Pronto. Premi "Cerca versioni" per iniziare.</div>
+<button id="listBtn">Cerca versioni disponibili</button>
+<div id="results"></div>
+
+<script>
+const JSONBIN_ID = '6a44bc97da38895dfe1a20f9';
+const JSONBIN_KEY = '$2a$10$VNTj6CT9PBlMxuJPipL3tutUeRZJQGMAkjbIqOyxSGPpiBF7U7p.K';
+const BASE = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
+
+function setStatus(t){ document.getElementById('status').textContent = t; }
+
+document.getElementById('listBtn').addEventListener('click', async () => {
+  setStatus('Controllo quante versioni esistono…');
+  document.getElementById('results').innerHTML = '';
+  try{
+    const countRes = await fetch(BASE + '/versions/count', {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    if(!countRes.ok) throw new Error('HTTP ' + countRes.status);
+    const countJson = await countRes.json();
+    const total = countJson.metadata ? countJson.metadata.versionCount : countJson.versionCount;
+    setStatus(`Trovate ${total} versioni. Carico i contenuti (dalla più recente)…`);
+
+    const resultsEl = document.getElementById('results');
+    // Loop from newest to oldest, show each version's content and entry count
+    for(let v = total; v >= 1; v--){
+      try{
+        const res = await fetch(BASE + '/' + v, {
+          headers: { 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Meta': 'false' }
+        });
+        if(!res.ok) continue;
+        const data = await res.json();
+        const count = Array.isArray(data) ? data.length : 0;
+        const div = document.createElement('div');
+        div.className = 'version';
+        div.innerHTML = `
+          <h3>Versione ${v} — ${count} righe</h3>
+          <pre>${JSON.stringify(data, null, 2).slice(0, 1500)}</pre>
+          <button class="restore-btn" data-version="${v}">✅ Ripristina questa versione</button>
+        `;
+        resultsEl.appendChild(div);
+      }catch(e){ /* skip failed version */ }
+    }
+    setStatus('Fatto. Scorri, trova la versione con i dati giusti, e premi "Ripristina".');
+
+    document.querySelectorAll('.restore-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const v = btn.dataset.version;
+        if(!confirm(`Ripristinare la versione ${v}? Questo sovrascriverà i dati attuali del bin.`)) return;
+        setStatus('Ripristino in corso…');
+        try{
+          const getRes = await fetch(BASE + '/' + v, { headers: { 'X-Master-Key': JSONBIN_KEY, 'X-Bin-Meta': 'false' } });
+          const data = await getRes.json();
+          const putRes = await fetch(BASE, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+            body: JSON.stringify(data)
+          });
+          if(!putRes.ok) throw new Error('HTTP ' + putRes.status);
+          setStatus('✅ Ripristinato! Ora puoi aprire GlowScale, i dati dovrebbero essere tornati.');
+        }catch(e){
+          setStatus('❌ Errore nel ripristino: ' + e.message);
+        }
+      });
+    });
+
+  }catch(e){
+    setStatus('❌ Errore: ' + e.message);
+  }
+});
+</script>
+</body>
+</html>
