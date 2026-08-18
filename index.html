@@ -147,6 +147,34 @@
     cursor:pointer;
     min-height:38px;
   }
+  .backup-btn{ background:var(--gold); margin-top:8px; }
+  #backupWrap{
+    margin-top:16px;
+    padding-top:14px;
+    border-top:1px dashed var(--pink-line);
+    text-align:left;
+    max-height:300px;
+    overflow-y:auto;
+  }
+  .backup-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 6px;
+    border-bottom:1px solid var(--pink-soft);
+    font-size:12px;
+  }
+  .backup-row .backup-info{ color:var(--ink); }
+  .backup-row .backup-count{ color:#8a6172; font-size:11px; }
+  .backup-row button{
+    background:var(--pink-deep);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:6px 12px;
+    font-size:11px;
+    cursor:pointer;
+  }
   #chartWrap{
     margin-top:16px;
     padding-top:14px;
@@ -434,9 +462,11 @@
   <div class="days-since-start" id="daysSinceStart"></div>
   <div class="days" id="shotCount">💉 0</div>
   <button class="chart-toggle-btn" id="chartToggleBtn">📈 Grafico</button>
+  <button class="chart-toggle-btn backup-btn" id="backupToggleBtn">♻️ Ripristina backup</button>
   <div id="chartWrap" style="display:none;">
     <canvas id="weightChart" width="380" height="220"></canvas>
   </div>
+  <div id="backupWrap" style="display:none;"></div>
 </div>
 
 <div class="entry-form">
@@ -498,10 +528,11 @@ const T = {
   }
 };
 
-// --- Shared data store via JSONBin.io ---
+// --- Shared data store via JSONBin.io, with embedded auto-backups ---
 const JSONBIN_ID = '6a44bc97da38895dfe1a20f9';
 const JSONBIN_KEY = '$2a$10$VNTj6CT9PBlMxuJPipL3tutUeRZJQGMAkjbIqOyxSGPpiBF7U7p.K';
 const JSONBIN_API = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
+const MAX_BACKUPS = 20;
 
 function setSyncStatus(text){
   const el = document.getElementById('syncStatus');
@@ -509,6 +540,7 @@ function setSyncStatus(text){
 }
 
 let remoteSyncOk = false; // becomes true only after a successful load from the server this session
+let backups = []; // [{ts, reason, entries}], newest last
 
 async function loadEntries(){
   setSyncStatus(lang === 'ita' ? 'Sincronizzo…' : 'Syncing…');
@@ -522,8 +554,17 @@ async function loadEntries(){
     });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
-    // keep any row with a valid date; weightKg may legitimately be null (shot-only day)
-    entries = (Array.isArray(json) ? json : []).filter(e => e && e.date);
+    // support both the old plain-array format and the new {entries, backups} wrapper
+    if(Array.isArray(json)){
+      entries = json.filter(e => e && e.date);
+      backups = [];
+    } else if(json && typeof json === 'object'){
+      entries = (Array.isArray(json.entries) ? json.entries : []).filter(e => e && e.date);
+      backups = Array.isArray(json.backups) ? json.backups : [];
+    } else {
+      entries = [];
+      backups = [];
+    }
     localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
     remoteSyncOk = true;
     setSyncStatus(lang === 'ita' ? 'Aggiornato ✓' : 'Up to date ✓');
@@ -536,9 +577,18 @@ async function loadEntries(){
   }
 }
 
+// Writes {entries, backups} as-is, without adding a new backup snapshot.
+async function writeToServer(payload, {keepalive} = {}){
+  return fetch(JSONBIN_API, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+    body: JSON.stringify(payload),
+    keepalive: !!keepalive
+  });
+}
+
 async function saveEntries(){
   // Safety net: never let a failed/empty sync silently overwrite real server data.
-  // If we haven't confirmed a successful load from the server this session, block the write.
   if(!remoteSyncOk){
     const msg = lang === 'ita'
       ? 'Non sono ancora riuscito a leggere i dati dal server in modo sicuro. Salvare ora rischia di CANCELLARE dati esistenti. Vuoi salvare comunque?'
@@ -551,14 +601,7 @@ async function saveEntries(){
   localStorage.setItem('asia_weight_entries_cache', JSON.stringify(entries));
   setSyncStatus(lang === 'ita' ? 'Salvo…' : 'Saving…');
   try{
-    const res = await fetch(JSONBIN_API, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': JSONBIN_KEY
-      },
-      body: JSON.stringify(entries)
-    });
+    const res = await writeToServer({ entries, backups });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     setSyncStatus(lang === 'ita' ? 'Salvato ✓' : 'Saved ✓');
   }catch(e){
@@ -567,6 +610,21 @@ async function saveEntries(){
   }
 }
 
+// Takes a snapshot of the current entries and stores it in the backup history.
+// Skips if identical to the most recent backup (avoids piling up duplicates).
+async function takeBackupSnapshot(reason, {keepalive} = {}){
+  if(!remoteSyncOk) return; // never snapshot data we're not sure is real
+  const snapshot = JSON.parse(JSON.stringify(entries));
+  const last = backups[backups.length - 1];
+  if(last && JSON.stringify(last.entries) === JSON.stringify(snapshot)) return; // no change, skip
+  backups.push({ ts: new Date().toISOString(), reason, entries: snapshot });
+  if(backups.length > MAX_BACKUPS) backups = backups.slice(backups.length - MAX_BACKUPS);
+  try{
+    await writeToServer({ entries, backups }, { keepalive });
+  }catch(e){
+    console.error('Backup snapshot error', e);
+  }
+}
 
 function kgToLb(kg){ return kg * 2.20462; }
 function lbToKg(lb){ return lb / 2.20462; }
@@ -805,6 +863,56 @@ document.getElementById('chartToggleBtn').addEventListener('click', () => {
   }
 });
 
+function renderBackupList(){
+  const wrap = document.getElementById('backupWrap');
+  if(backups.length === 0){
+    wrap.innerHTML = `<div class="empty">${lang === 'ita' ? 'Nessun backup ancora salvato.' : 'No backups saved yet.'}</div>`;
+    return;
+  }
+  // newest first
+  const ordered = [...backups].slice().reverse();
+  wrap.innerHTML = '';
+  ordered.forEach(b => {
+    const idx = backups.indexOf(b);
+    const d = new Date(b.ts);
+    const dateStr = d.toLocaleString(lang === 'ita' ? 'it-IT' : 'en-US', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    const count = b.entries.length;
+    const row = document.createElement('div');
+    row.className = 'backup-row';
+    row.innerHTML = `
+      <div>
+        <div class="backup-info">${dateStr}</div>
+        <div class="backup-count">${count} ${lang === 'ita' ? 'righe' : 'rows'} · ${b.reason || ''}</div>
+      </div>
+      <button data-idx="${idx}">${lang === 'ita' ? 'Ripristina' : 'Restore'}</button>
+    `;
+    wrap.appendChild(row);
+  });
+  wrap.querySelectorAll('button[data-idx]').forEach(btn => {
+    btn.onclick = async () => {
+      const b = backups[parseInt(btn.dataset.idx, 10)];
+      if(!b) return;
+      const d = new Date(b.ts);
+      const dateStr = d.toLocaleString(lang === 'ita' ? 'it-IT' : 'en-US');
+      const msg = lang === 'ita'
+        ? `Ripristinare il backup del ${dateStr} (${b.entries.length} righe)? I dati attuali verranno sostituiti.`
+        : `Restore the backup from ${dateStr} (${b.entries.length} rows)? Current data will be replaced.`;
+      if(!confirm(msg)) return;
+      entries = JSON.parse(JSON.stringify(b.entries));
+      await saveEntries();
+      render();
+      renderBackupList();
+    };
+  });
+}
+
+document.getElementById('backupToggleBtn').addEventListener('click', () => {
+  const wrap = document.getElementById('backupWrap');
+  const showing = wrap.style.display !== 'none';
+  wrap.style.display = showing ? 'none' : 'block';
+  if(!showing) renderBackupList();
+});
+
 document.getElementById('addBtn').addEventListener('click', () => {
   const dateVal = document.getElementById('inputDate').value;
   const rawWeight = document.getElementById('inputWeight').value;
@@ -879,6 +987,8 @@ document.getElementById('inputDate').valueAsDate = new Date();
 (async () => {
   await loadEntries();
   render();
+  // automatic backup snapshot on open
+  await takeBackupSnapshot('apertura app');
 })();
 
 // refresh from the shared store every 20s so everyone sees updates without reloading
@@ -887,6 +997,16 @@ setInterval(async () => {
   await loadEntries();
   render();
 }, 20000);
+
+// automatic backup snapshot when the app is closed / put in background
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden'){
+    takeBackupSnapshot('chiusura app', { keepalive: true });
+  }
+});
+window.addEventListener('pagehide', () => {
+  takeBackupSnapshot('chiusura app', { keepalive: true });
+});
 
 </script>
 </body>
